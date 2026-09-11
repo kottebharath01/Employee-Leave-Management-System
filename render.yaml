@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: employee-leave-backend
+    env: python
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt && alembic upgrade head && python -m app.utils.seed"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        fromDatabase:
+          name: employee-leave-db
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: CORS_ORIGINS
+        value: "*"
+
+databases:
+  - name: employee-leave-db
+    databaseName: employee_leave_db
+    user: postgres
+    plan: free
