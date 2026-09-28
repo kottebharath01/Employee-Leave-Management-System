@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # --- CORS ---
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
+    # --- Seed / Dev Defaults ---
+    DEFAULT_DEV_PASSWORD: str = "Password123"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @model_validator(mode="after")

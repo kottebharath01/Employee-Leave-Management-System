@@ -4,8 +4,10 @@ since employees cannot self-register.
 
 Run with:  python -m app.utils.seed
 """
+import os
 from datetime import date
 from app.core.enums import Role
+from app.core.config import settings
 from app.core.security import hash_password
 from app.database.session import SessionLocal
 from app.models.department import Department
@@ -15,7 +17,10 @@ from app.models.leave_balance import LeaveBalance
 from app.models.holiday import Holiday
 
 
-def seed():
+def seed(default_password: str = None, update_passwords: bool = False):
+    if default_password is None:
+        default_password = settings.DEFAULT_DEV_PASSWORD
+
     db = SessionLocal()
     try:
         current_year = date.today().year
@@ -63,6 +68,9 @@ def seed():
         def get_or_create_employee(name, email, password, role, department, manager=None, is_admin=False):
             emp = db.query(Employee).filter(Employee.email == email.lower()).first()
             if emp:
+                if update_passwords:
+                    emp.password_hash = hash_password(password)
+                    db.commit()
                 return emp
             emp = Employee(
                 name=name,
@@ -82,48 +90,48 @@ def seed():
         # --- 4. Business Hierarchy (Engineering & Executive) ---
         # CEO -> Director -> Senior Manager -> Manager -> Team Lead -> Employee
         ceo = get_or_create_employee(
-            "Carol CEO", "ceo@company.com", "Password123", Role.CEO, engineering
+            "Carol CEO", "ceo@company.com", default_password, Role.CEO, engineering
         )
         director = get_or_create_employee(
-            "Dan Director", "director@company.com", "Password123", Role.DIRECTOR, engineering, manager=ceo
+            "Dan Director", "director@company.com", default_password, Role.DIRECTOR, engineering, manager=ceo
         )
         sr_manager = get_or_create_employee(
-            "Sara SeniorManager", "seniormanager@company.com", "Password123", Role.SENIOR_MANAGER, engineering, manager=director
+            "Sara SeniorManager", "seniormanager@company.com", default_password, Role.SENIOR_MANAGER, engineering, manager=director
         )
         manager = get_or_create_employee(
-            "Mike Manager", "manager@company.com", "Password123", Role.MANAGER, engineering, manager=sr_manager
+            "Mike Manager", "manager@company.com", default_password, Role.MANAGER, engineering, manager=sr_manager
         )
         team_lead = get_or_create_employee(
-            "Tom TeamLead", "teamlead@company.com", "Password123", Role.TEAM_LEAD, engineering, manager=manager
+            "Tom TeamLead", "teamlead@company.com", default_password, Role.TEAM_LEAD, engineering, manager=manager
         )
         employee = get_or_create_employee(
-            "Emma Employee", "employee@company.com", "Password123", Role.EMPLOYEE, engineering, manager=team_lead
+            "Emma Employee", "employee@company.com", default_password, Role.EMPLOYEE, engineering, manager=team_lead
         )
 
         # --- 5. HR Hierarchy ---
         # CEO -> HR Director -> HR Manager -> HR Executive / HR Associate
         hr_director = get_or_create_employee(
-            "Helen HRDirector", "hrdirector@company.com", "Password123", Role.HR_DIRECTOR, hr_dept, manager=ceo
+            "Helen HRDirector", "hrdirector@company.com", default_password, Role.HR_DIRECTOR, hr_dept, manager=ceo
         )
         hr_manager = get_or_create_employee(
-            "Harry HRManager", "hrmanager@company.com", "Password123", Role.HR_MANAGER, hr_dept, manager=hr_director
+            "Harry HRManager", "hrmanager@company.com", default_password, Role.HR_MANAGER, hr_dept, manager=hr_director
         )
         hr_executive = get_or_create_employee(
-            "Henry HRExecutive", "hrexecutive@company.com", "Password123", Role.HR_EXECUTIVE, hr_dept, manager=hr_manager
+            "Henry HRExecutive", "hrexecutive@company.com", default_password, Role.HR_EXECUTIVE, hr_dept, manager=hr_manager
         )
         hr_associate = get_or_create_employee(
-            "Holly HRAssociate", "hrassociate@company.com", "Password123", Role.HR_ASSOCIATE, hr_dept, manager=hr_manager
+            "Holly HRAssociate", "hrassociate@company.com", default_password, Role.HR_ASSOCIATE, hr_dept, manager=hr_manager
         )
 
         # --- 6. Admin & Other Departments ---
         admin = get_or_create_employee(
-            "Alice Admin", "admin@company.com", "Password123", Role.ADMIN, hr_dept, manager=ceo, is_admin=True
+            "Alice Admin", "admin@company.com", default_password, Role.ADMIN, hr_dept, manager=ceo, is_admin=True
         )
         finance_emp = get_or_create_employee(
-            "Frank Finance", "finance@company.com", "Password123", Role.EMPLOYEE, finance, manager=manager
+            "Frank Finance", "finance@company.com", default_password, Role.EMPLOYEE, finance, manager=manager
         )
         operations_emp = get_or_create_employee(
-            "Oscar Operations", "operations@company.com", "Password123", Role.EMPLOYEE, operations, manager=manager
+            "Oscar Operations", "operations@company.com", default_password, Role.EMPLOYEE, operations, manager=manager
         )
 
         all_seeded_employees = [
@@ -181,7 +189,7 @@ def seed():
         db.commit()
 
         print(f"Seed data created successfully for year {current_year}.")
-        print("Sample Development Accounts (Default dev password: Password123):")
+        print(f"Sample Development Accounts (Default dev password: {default_password}):")
         print(f"{'Role':20s} {'Email':32s} {'Department':15s} Admin")
         print("-" * 75)
         for e in all_seeded_employees:
@@ -193,4 +201,18 @@ def seed():
 
 
 if __name__ == "__main__":
-    seed()
+    import argparse
+    parser = argparse.ArgumentParser(description="Seed the database with sample accounts and initial data.")
+    parser.add_argument(
+        "--password",
+        default=os.getenv("DEFAULT_DEV_PASSWORD", "Password123"),
+        help="Default password for seeded accounts (default: env DEFAULT_DEV_PASSWORD or Password123)",
+    )
+    parser.add_argument(
+        "--update-passwords",
+        action="store_true",
+        default=os.getenv("UPDATE_PASSWORDS", "false").lower() in ("true", "1", "yes"),
+        help="Update password hashes for existing sample accounts to match the default password",
+    )
+    args = parser.parse_args()
+    seed(default_password=args.password, update_passwords=args.update_passwords)
