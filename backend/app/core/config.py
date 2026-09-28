@@ -8,6 +8,20 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+import os
+from urllib.parse import urlparse
+
+
+def mask_db_url(url_str: str) -> str:
+    try:
+        parsed = urlparse(url_str)
+        host = parsed.hostname or "unknown"
+        port = f":{parsed.port}" if parsed.port else ""
+        return f"{parsed.scheme}://***@{host}{port}{parsed.path}"
+    except Exception:
+        return "invalid-db-url"
+
+
 class Settings(BaseSettings):
     # --- Application ---
     APP_NAME: str = "Employee Leave & Approval Workflow Management System"
@@ -39,7 +53,25 @@ class Settings(BaseSettings):
             url = "postgresql://" + url[len("ostgres://"):]
         elif url.startswith("postgres://"):
             url = "postgresql://" + url[len("postgres://"):]
+
+        if "render.com" in url and "sslmode" not in url:
+            sep = "&" if "?" in url else "?"
+            url += f"{sep}sslmode=require"
+
         self.DATABASE_URL = url
+
+        if os.environ.get("RENDER"):
+            if "localhost" in url or "127.0.0.1" in url:
+                print("=" * 70)
+                print("[CRITICAL CONFIG ERROR] DATABASE_URL is pointing to localhost on Render!")
+                print("Render runs in the cloud and cannot connect to your local computer.")
+                print("ACTION REQUIRED:")
+                print("1. In Render Dashboard, click 'New +' -> 'PostgreSQL'.")
+                print("2. Copy the 'Internal Database URL' (or 'External Database URL').")
+                print("3. In your Web Service -> 'Environment', add/edit DATABASE_URL.")
+                print("=" * 70)
+            else:
+                print(f"[Render DB] Target: {mask_db_url(url)}")
         return self
 
     @property
