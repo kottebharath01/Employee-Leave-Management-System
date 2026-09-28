@@ -32,8 +32,14 @@ class Settings(BaseSettings):
     def sync_config(self):
         if self.JWT_ACCESS_TOKEN_EXPIRE_MINUTES is not None:
             self.ACCESS_TOKEN_EXPIRE_MINUTES = self.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
-        if self.DATABASE_URL.startswith("postgres://"):
-            self.DATABASE_URL = self.DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        url = self.DATABASE_URL.strip().strip("'\"")
+        if url.startswith("ostgresql://"):
+            url = "p" + url
+        elif url.startswith("ostgres://"):
+            url = "postgresql://" + url[len("ostgres://"):]
+        elif url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://"):]
+        self.DATABASE_URL = url
         return self
 
     @property
