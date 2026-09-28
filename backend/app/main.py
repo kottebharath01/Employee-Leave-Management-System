@@ -85,3 +85,20 @@ app.include_router(notification_routes.router)
 app.include_router(holiday_routes.router)
 app.include_router(department_routes.router)
 app.include_router(admin_routes.router)
+
+from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.employee import EmployeeOut
+from app.dependencies.auth import get_current_user
+from app.models.employee import Employee
+
+
+@app.post("/auth/login", response_model=TokenResponse, include_in_schema=False)
+def login_alias(payload: LoginRequest, db: Session = Depends(get_db)):
+    """Fallback alias for clients requesting /auth/login without /api prefix."""
+    return auth_routes.login_route(payload, db)
+
+
+@app.get("/auth/me", response_model=EmployeeOut, include_in_schema=False)
+def get_me_alias(current_user: Employee = Depends(get_current_user)):
+    """Fallback alias for clients requesting /auth/me without /api prefix."""
+    return auth_routes.get_me(current_user)
