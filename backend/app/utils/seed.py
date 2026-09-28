@@ -17,7 +17,7 @@ from app.models.leave_balance import LeaveBalance
 from app.models.holiday import Holiday
 
 
-def seed(default_password: str = None, update_passwords: bool = False):
+def seed(default_password: str = None, update_passwords: bool = True):
     if default_password is None:
         default_password = settings.DEFAULT_DEV_PASSWORD
 
@@ -205,14 +205,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Seed the database with sample accounts and initial data.")
     parser.add_argument(
         "--password",
-        default=os.getenv("DEFAULT_DEV_PASSWORD", "Password123"),
-        help="Default password for seeded accounts (default: env DEFAULT_DEV_PASSWORD or Password123)",
+        default=settings.DEFAULT_DEV_PASSWORD,
+        help=f"Default password for seeded accounts (default: {settings.DEFAULT_DEV_PASSWORD})",
     )
     parser.add_argument(
-        "--update-passwords",
-        action="store_true",
-        default=os.getenv("UPDATE_PASSWORDS", "false").lower() in ("true", "1", "yes"),
-        help="Update password hashes for existing sample accounts to match the default password",
+        "--no-update-passwords",
+        action="store_false",
+        dest="update_passwords",
+        default=True,
+        help="Skip updating password hashes for existing sample accounts",
     )
     args = parser.parse_args()
     seed(default_password=args.password, update_passwords=args.update_passwords)
